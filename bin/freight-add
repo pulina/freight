@@ -5,6 +5,7 @@
 
 #/ Usage: freight add [-c <conf>] [-v] [-h] <package> <manager>/<distro>...
 #/   -c <conf>, --conf=<conf> config file to parse
+#/   -d, --mkdir              create <manager>/<distro>, if it doesn't exist yet
 #/   -v, --verbose            verbose mode
 #/   -e, --add-error          exit with error if package already added
 #/   -h, --help               show this help message
@@ -23,6 +24,7 @@ do
         --conf=*) CONF="$(echo "$1" | cut -c"8-")" shift;;
         -v|--verbose) VERBOSE=1 shift;;
         -e|--add-error) FREIGHT_ADD_ERROR="YES" shift;;
+		-d|--mkdir) MKDIR=1 shift;;
         -h|--help) usage 0;;
         -*) echo "# [freight] unknown switch: $1" >&2; usage 1;;
         *) break;;
@@ -82,15 +84,29 @@ add() {
     fi
 }
 
+# Create all the Freight library directories, if any is missing.
+[ "$MKDIR" = 1 ] && mkdir -p -- "$@"
+
+# Check if all the Freight library directories are present. If not, don't even
+# start any work.
+for DIRNAME in "$@"
+do
+	MISSING=
+	[ -d "$DIRNAME" ] || {
+		echo "# [freight] missing directory $DIRNAME" >&2
+		MISSING=1
+	}
+	[ "$MISSING" = "" ] || exit 1
+done
+
 # Hard link this package into every `<manager>/<distro>` given in `$@`.
 # These links will later be used to compile the `Release` and `Packages`
 # files in the Freight cache.
 for PATHNAME in $PATHNAMES
 do
-    FILENAME="$(basename "$PATHNAME")"
-    for DIRNAME in "$@"
-    do
-        mkdir -p "$DIRNAME"
+	FILENAME="$(basename "$PATHNAME")"
+	for DIRNAME in "$@"
+	do
         case "$FILENAME" in
             *_*_*.deb) add "$FILENAME" "$DIRNAME" "$PATHNAME";;
             *.deb)

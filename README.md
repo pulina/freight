@@ -21,7 +21,7 @@ Install Freight and create a minimal configuration in `/usr/local/etc/freight.co
 
 Add packages to particular distros:
 
-	freight add foobar_1.2.3-1_all.deb apt/squeeze apt/lucid apt/natty
+	freight add --mkdir foobar_1.2.3-1_all.deb apt/squeeze apt/lucid apt/natty
 
 Build the cache of all the files needed to be accepted as a Debian archive:
 
