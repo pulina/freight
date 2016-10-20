@@ -6,5 +6,11 @@
 # hide next line to enable tests 
 override_dh_auto_test: ;
 
+override_dh_auto_clean:
+	: nothing
+
+override_dh_auto_build:
+	: nothing
+
 override_dh_auto_install:
-	dh_auto_install -- prefix=/usr sysconfdir=/etc
+	make install prefix=/usr sysconfdir=/etc DESTDIR=$(CURDIR)/debian/tmp

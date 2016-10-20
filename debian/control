@@ -2,10 +2,11 @@ Source: freight
 Section: utils
 Priority: extra
 Maintainer: Freight team
-Build-Depends: debhelper (>=9)
+Build-Depends: debhelper (>=9), make
 Homepage: https://github.com/freight-team/freight
 
 Package: freight
 Architecture: all
-Depends: gnupg
+Depends: ${shlibs:Depends}, ${misc:Depends}, dash, dpkg, gnupg,
+ sed, awk, findutils, coreutils, gzip
 Description: A modern take on the Debian archive
