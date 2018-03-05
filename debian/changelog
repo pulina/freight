@@ -1,3 +1,9 @@
+freight (0.3.11.1) stable; urgency=low
+
+  * Some minor changes and prepare for deployment.
+
+ -- pulina <pulina@k.pl>  Mon, 05 Mar 2018 17:54:18 +0100
+
 freight (0.3.11) stable; urgency=low
 
   * bump version to 0.3.11 (Michael Moll, de67c6e)
