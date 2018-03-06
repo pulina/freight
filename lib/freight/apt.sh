@@ -53,6 +53,15 @@ apt_source_origversion() {
     apt_source_version "$1" | cut -d- -f1
 }
 
+# Print the files required by source package.
+apt_source_files() {
+   awk '
+       entry && /^ / { print $NF }
+       entry && /^[^ ]/ { exit }
+       /^(Checksums-Sha[0-9]*|Files): *$/ { entry = 1 }
+   ' "$1"
+}
+
 # Print the prefix for a package name.
 apt_prefix() {
     [ "$(echo "$1" | cut -c1-3)" = "lib" ] && C=4 || C=1
@@ -375,31 +384,16 @@ apt_cache_source() {
     ORIG_VERSION="$(apt_source_origversion "$PATHNAME")"
     DIRNAME="$(dirname "$PATHNAME")"
     DSC_FILENAME="${NAME}_${VERSION%*:}.dsc"
-    DEBTAR_GZ_FILENAME="${NAME}_${VERSION%*:}.debian.tar.gz"
-    DEBTAR_BZ2_FILENAME="${NAME}_${VERSION%*:}.debian.tar.bz2"
-    DEBTAR_XZ_FILENAME="${NAME}_${VERSION%*:}.debian.tar.xz"
-    DEBTAR_LZMA_FILENAME="${NAME}_${VERSION%*:}.debian.tar.lzma"
-    DIFFGZ_FILENAME="${NAME}_${VERSION%*:}.diff.gz"
-    ORIG_FILENAME="${NAME}_${ORIG_VERSION}.orig.tar.gz"
-    TAR_FILENAME="${NAME}_${VERSION%*:}.tar.gz"
 
-    # Find which style of diff they're using.
-    if [ -f "$VARLIB/apt/$DIST/$DIRNAME/$DEBTAR_GZ_FILENAME" ]
-    then DIFF_FILENAME=${DEBTAR_GZ_FILENAME}
-    elif [ -f "$VARLIB/apt/$DIST/$DIRNAME/$DEBTAR_BZ2_FILENAME" ]
-    then DIFF_FILENAME=${DEBTAR_BZ2_FILENAME}
-    elif [ -f "$VARLIB/apt/$DIST/$DIRNAME/$DEBTAR_XZ_FILENAME" ]
-    then DIFF_FILENAME=${DEBTAR_XZ_FILENAME}
-    elif [ -f "$VARLIB/apt/$DIST/$DIRNAME/$DEBTAR_LZMA_FILENAME" ]
-    then DIFF_FILENAME=${DEBTAR_LZMA_FILENAME}
-    else DIFF_FILENAME=${DIFFGZ_FILENAME}
-    fi
+    SOURCE_FILENAMES="$(apt_source_files "$VARLIB/apt/$DIST/$DIRNAME/$DSC_FILENAME")"
 
-    # Verify this package by ensuring the other necessary files are present.
-    [ -f "$VARLIB/apt/$DIST/$DIRNAME/$ORIG_FILENAME" ] && [ -f "$VARLIB/apt/$DIST/$DIRNAME/$DIFF_FILENAME" ] || [ -f "$VARLIB/apt/$DIST/$DIRNAME/$TAR_FILENAME" ] || {
-        echo "# [freight] skipping invalid Debian source package $PATHNAME" >&2
-        return
-    }
+    for FILENAME in $SOURCE_FILENAMES
+    do
+        [ -f "$VARLIB/apt/$DIST/$DIRNAME/$FILENAME" ] || {
+            echo "# [freight] skipping invalid Debian source package $PATHNAME" >&2
+            return
+        }
+    done
 
     # Create the architecture-parallel source directory and manifest.
     mkdir -p "$DISTCACHE/$COMP/source"
@@ -409,7 +403,7 @@ apt_cache_source() {
     # if it isn't already there (which can happen when two packages derive
     # from the same original tarball).
     mkdir -p "$DISTCACHE/.refs/$COMP"
-    for FILENAME in "$DSC_FILENAME" "$ORIG_FILENAME" "$DIFF_FILENAME" "$TAR_FILENAME"
+    for FILENAME in "$DSC_FILENAME" $SOURCE_FILENAMES
     do
         [ -f "$VARLIB/apt/$DIST/$DIRNAME/$FILENAME" ] || continue
         [ -f "$DISTCACHE/.refs/$COMP/$FILENAME" ] ||
@@ -423,7 +417,7 @@ apt_cache_source() {
     # Link this source package into the pool.
     POOL="pool/$DIST/$COMP/$(apt_prefix "$NAME")/$NAME"
     mkdir -p "$VARCACHE/$POOL"
-    for FILENAME in "$DSC_FILENAME" "$ORIG_FILENAME" "$DIFF_FILENAME" "$TAR_FILENAME"
+    for FILENAME in "$DSC_FILENAME" $SOURCE_FILENAMES
     do
         if [ -f "$DISTCACHE/.refs/$COMP/$FILENAME" ] && ! [ -f "$VARCACHE/$POOL/$FILENAME" ]
         then
@@ -447,7 +441,7 @@ apt_cache_source() {
             sed "s/^Source:/Package:/"
             echo "Directory: DIRECTORY"
             echo "Files:"
-            for FILENAME in "$DSC_FILENAME" "$ORIG_FILENAME" "$DIFF_FILENAME" "$TAR_FILENAME"
+            for FILENAME in "$DSC_FILENAME" $SOURCE_FILENAMES
             do
                 [ -f "$VARCACHE/$POOL/$FILENAME" ] || continue
                 SIZE="$(apt_filesize "$VARCACHE/$POOL/$FILENAME")"
@@ -455,7 +449,7 @@ apt_cache_source() {
                 echo " $MD5 $SIZE $FILENAME"
             done
             echo "Checksums-Sha1:"
-            for FILENAME in "$DSC_FILENAME" "$ORIG_FILENAME" "$DIFF_FILENAME" "$TAR_FILENAME"
+            for FILENAME in "$DSC_FILENAME" $SOURCE_FILENAMES
             do
                 [ -f "$VARCACHE/$POOL/$FILENAME" ] || continue
                 SIZE="$(apt_filesize "$VARCACHE/$POOL/$FILENAME")"
@@ -463,7 +457,7 @@ apt_cache_source() {
                 echo " $SHA1 $SIZE $FILENAME"
             done
             echo "Checksums-Sha256:"
-            for FILENAME in "$DSC_FILENAME" "$ORIG_FILENAME" "$DIFF_FILENAME" "$TAR_FILENAME"
+            for FILENAME in "$DSC_FILENAME" $SOURCE_FILENAMES
             do
                 [ -f "$VARCACHE/$POOL/$FILENAME" ] || continue
                 SIZE="$(apt_filesize "$VARCACHE/$POOL/$FILENAME")"
@@ -471,7 +465,7 @@ apt_cache_source() {
                 echo " $SHA256 $SIZE $FILENAME"
             done
             echo "Checksums-Sha512:"
-            for FILENAME in "$DSC_FILENAME" "$ORIG_FILENAME" "$DIFF_FILENAME" "$TAR_FILENAME"
+            for FILENAME in "$DSC_FILENAME" $SOURCE_FILENAMES
             do
                 [ -f "$VARCACHE/$POOL/$FILENAME" ] || continue
                 SIZE="$(apt_filesize "$VARCACHE/$POOL/$FILENAME")"
