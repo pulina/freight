@@ -1,3 +1,9 @@
+freight (0.3.11.3) stable; urgency=medium
+
+  * Trust the source package with the source files layout.
+
+ -- pulina <pulina@k.pl>  Tue, 06 Mar 2018 11:19:56 +0100
+
 freight (0.3.11.2) stable; urgency=medium
 
   * Prevent auto create repository
